@@ -220,7 +220,7 @@
                 },
                 buffer: {
                     id: "mandolin",
-                    url: "../compositions/whiteout/audio/mandolin.wav"
+                    url: "audio/mandolin.wav"
                 },
                 dur: {
                     id: "grainDur",
