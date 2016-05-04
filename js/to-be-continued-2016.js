@@ -3,7 +3,7 @@
     "use strict";
 
     flock.init({
-        bufferSize: 2048
+        bufferSize: 512
     });
 
     fluid.defaults("colin.toBeContinued", {
@@ -45,12 +45,12 @@
         gradeNames: "flock.band",
 
         components: {
-            // sine: {
-            //     type: "colin.toBeContinued.sineSynth"
-            // },
-            //
             mandolin: {
                 type: "colin.whiteout.mandolin"
+            },
+
+            lowGuitar: {
+                type: "colin.whiteout.lowGuitar"
             }
         }
     });
@@ -78,49 +78,15 @@
         }
     });
 
-    colin.toBeContinued.midiConnection.transformControlMessage = function (msg, controlSpec) {
-        var val = msg.value,
-            transform = controlSpec.transform;
-
-        if (!transform) {
-            return val;
-        }
-
-        if (transform.mul) {
-            val *= transform.mul;
-        }
-
-        if (transform.add) {
-            val += transform.add;
-        }
-
-        return val;
-    };
-
-    colin.toBeContinued.midiConnection.applyControlMessage = function (msg, map, synthContext) {
-        var controlSpec = map[msg.number];
-        if (!controlSpec) {
-            return;
-        }
-
-        var val = colin.toBeContinued.midiConnection.transformControlMessage(msg, controlSpec);
-        var synth = fluid.get(synthContext, controlSpec.synth);
-        if (!synth) {
-            return;
-        }
-
-        synth.set(controlSpec.input, val);
-    };
-
-
     colin.toBeContinued.midiConnection.applyNoteMessage = function (that, msg, synthContext) {
-        var density = msg.velocity / 3,
-            speed = (msg.note / 36) + 0.01;
+        var density = msg.velocity / 50,
+            speed = (msg.note / 72) + 0.01;
 
         if (msg.note !== that.previousNote) {
             synthContext.mandolin.set("granulator.speed", speed);
         }
-        synthContext.mandolin.set("trigger.density", density);
+        // synthContext.mandolin.set("trigger.density", density);
+        synthContext.mandolin.set("granulator.trigger", msg.velocity);
     };
 
     fluid.defaults("colin.toBeContinued.midiController", {
@@ -153,40 +119,57 @@
             },
 
             // Grain duration scale.
-            2: {
-                synth: "mandolin",
-                input: "grainDur.mul",
-                transform: {
-                    mul: 0.03125
+            2: [
+                {
+                    synth: "mandolin",
+                    input: "grainDur.mul",
+                    transform: {
+                        mul: 0.03125
+                    }
+                },
+                {
+                    synth: "mandolin",
+                    input: "grainDur.add",
+                    transform: {
+                        mul: 0.03125
+                    }
                 }
-            },
-
-            // Grain duration add.
-            3: {
-                synth: "mandolin",
-                input: "grainDur.add",
-                transform: {
-                    mul: 0.03125
-                }
-            },
+            ],
 
             // Volume.
-            6: {
+            3: {
                 synth: "mandolin",
                 input: "granulator.mul",
+                valuePath: "source",
                 transform: {
-                    mul: 0.00787402
+                    ugen: "flock.ugen.math",
+                    div: 64
                 }
             },
 
             // Panning.
-            7: {
-                synth: "mandolin",
-                input: "panner.pan",
+            // TODO: Map this to something more useful.
+            // 7: {
+            //     synth: "mandolin",
+            //     input: "panner.pan",
+            //     transform: {
+            //         mul: 0.015625,
+            //         add: -1.0
+            //     }
+            // },
+
+            // Guitar density.
+            8: {
+                synth: "lowGuitar",
+                input: "trigger.freq",
                 transform: {
-                    mul: 0.015625,
-                    add: -1.0
+                    mul: 0.0787402
                 }
+            },
+
+            9: {
+                synth: "lowGuitar",
+                input: "grainCentre.freq"
             },
 
             // Grain centre.
@@ -194,7 +177,7 @@
                 synth: "mandolin",
                 input: "grainCentre.value",
                 transform: {
-                    mul: 0.00787402
+                    mul: 0.1574804
                 }
             }
         },
@@ -211,7 +194,15 @@
         synthDef: {
             id: "panner",
             ugen: "flock.ugen.pan2",
-            pan: 0,
+            pan: {
+                ugen: "flock.ugen.triOsc",
+                rate: "audio",
+                freq: 1/20,
+                mul: 0.75,
+                options: {
+                    interpolate: "linear"
+                }
+            },
             source: {
                 id: "granulator",
                 ugen: "flock.ugen.triggerGrains",
@@ -257,31 +248,68 @@
                         interpolation: "linear"
                     }
                 },
-                trigger: {
-                    id: "trigger",
-                    ugen: "flock.ugen.dust",
-                    rate: "control",
-                    density: 0
-                    // density: {
-                    //     id: "grainDensity",
-                    //     ugen: "flock.ugen.sinOsc",
-                    //     rate: "control",
-                    //     freq: {
-                    //         ugen: "flock.ugen.lfNoise",
-                    //         rate: "control",
-                    //         mul: 1/45,
-                    //         add: 1/45
-                    //     },
-                    //     mul: 2,
-                    //     add: 2,
-                    //     options: {
-                    //         interpolation: "linear"
-                    //     }
-                    // }
-                },
+                trigger: 0,
                 mul: 0.1,
                 speed: 1.0
             }
+        }
+    });
+
+    fluid.defaults("colin.whiteout.lowGuitar", {
+        gradeNames: "flock.synth",
+
+        synthDef: {
+            ugen: "flock.ugen.pan2",
+            pan: {
+                ugen: "flock.ugen.triOsc",
+                rate: "audio",
+                freq: 1/20,
+                options: {
+                    interpolate: "linear"
+                }
+            },
+            source: {
+                id: "granulator",
+                ugen: "flock.ugen.triggerGrains",
+                dur: 1 * 1.08843537414966,
+                centerPos: {
+                    id: "grainCentre",
+                    ugen: "flock.ugen.lfNoise",
+                    rate: "control",
+                    freq: 1/2,
+                    options: {
+                        interpolation: "linear"
+                    },
+                    mul: {
+                        ugen: "flock.ugen.line",
+                        rate: "control",
+                        start: 50 * 1.08843537414966,
+                        end: 800 * 1.08843537414966,
+                        duration: 60
+                    }
+                },
+                buffer: {
+                    id: "low-guitar",
+                    url: "audio/low-bowed-guitar.wav"
+                },
+                trigger: {
+                    id: "trigger",
+                    ugen: "flock.ugen.impulse",
+                    rate: "control",
+                    freq: 0
+                },
+                mul: {
+                    ugen: "flock.ugen.triOsc",
+                    rate: "control",
+                    freq: 1/5,
+                    mul: 0.025,
+                    add: 0.03,
+                    options: {
+                        interpolation: "linear"
+                    }
+                }
+            }
+
         }
     });
 }());
