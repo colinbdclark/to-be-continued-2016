@@ -89,6 +89,7 @@
         synthContext.mandolin.set("granulator.trigger", msg.velocity);
     };
 
+
     fluid.defaults("colin.toBeContinued.midiController", {
         gradeNames: "flock.midi.controller",
 
@@ -99,6 +100,11 @@
         },
 
         controlMap: {
+
+            /************
+             * Mandolin *
+             ************/
+
             // Grain speed
             0: {
                 synth: "mandolin",
@@ -147,16 +153,65 @@
                 }
             },
 
-            // Panning.
-            // TODO: Map this to something more useful.
-            // 7: {
-            //     synth: "mandolin",
-            //     input: "panner.pan",
-            //     transform: {
-            //         mul: 0.015625,
-            //         add: -1.0
-            //     }
-            // },
+            // Output volume.
+            4: {
+                synth: "mandolin",
+                input: "flocking-out.mul",
+                valuePath: "source",
+                transform: {
+                    ugen: "flock.ugen.math",
+                    div: 127
+                }
+            },
+
+            // Grain centre.
+            10: {
+                synth: "mandolin",
+                input: "grainCentre.value",
+                transform: {
+                    mul: 0.1574804
+                }
+            },
+
+            /**********
+             * Guitar *
+             **********/
+
+            // Rotary pad - volume
+            5: {
+                synth: "lowGuitar",
+                input: "flocking-out.mul",
+                valuePath: "source",
+                transform: {
+                    ugen: "flock.ugen.math",
+                    div: 32
+                }
+            },
+
+            6: {
+                synth: "lowGuitar",
+                input: "granulator.speed",
+                valuePath: "source.source",
+                transform: {
+                    ugen: "flock.ugen.passThrough",
+                    source: {
+                        ugen: "flock.ugen.math",
+                        div: 64
+                    },
+                    add: 0.5
+                }
+            },
+
+            // Grain duration.
+            7: {
+                synth: "lowGuitar",
+                input: "granulator.dur",
+                valuePath: "source",
+                transform: {
+                    ugen: "flock.ugen.math",
+                    div: 32
+                }
+            },
 
             // Guitar density.
             8: {
@@ -170,22 +225,8 @@
             9: {
                 synth: "lowGuitar",
                 input: "grainCentre.freq"
-            },
-
-            // Grain centre.
-            10: {
-                synth: "mandolin",
-                input: "grainCentre.value",
-                transform: {
-                    mul: 0.1574804
-                }
             }
-        },
-
-        noteMap: {
-
         }
-
     });
 
     fluid.defaults("colin.whiteout.mandolin", {
@@ -263,7 +304,7 @@
             pan: {
                 ugen: "flock.ugen.triOsc",
                 rate: "audio",
-                freq: 1/20,
+                freq: 1/15,
                 options: {
                     interpolate: "linear"
                 }
@@ -309,7 +350,6 @@
                     }
                 }
             }
-
         }
     });
 }());
