@@ -1,0 +1,14 @@
+{
+    "name": "toBeContinued",
+    "version": "0.0.1",
+    "description": "To Be Continued Instruments",
+    "author": "Colin Clark",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/colinbdclark/to-be-continued-2016.git"
+    },
+    "dependencies": {
+        "flocking": "colinbdclark/flocking#midi-improvements"
+    }
+}
